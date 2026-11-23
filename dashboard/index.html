@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Token Radar — launch value prediction</title>
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="page-header">
+<h1>Token Radar</h1>
+<p class="subtitle">Pre-token protocols by predicted launch value</p>
+<p class="snapshot-line">Snapshot <span id="as-of"></span> · DefiLlama · Model radar-2.2 · Global multiple 0.214</p>
+<p class="note">Estimate — not a price promise. “Listed without a token” means DefiLlama records no token for it — not proof that no token exists.</p>
+</header>
+<main id="main">
+<section id="kpi" class="kpi-grid" aria-label="Snapshot summary">
+<article class="kpi-card"><span class="kpi-value" id="kpi-protocols">—</span><span class="kpi-label">Protocols shown</span></article>
+<article class="kpi-card"><span class="kpi-value" id="kpi-watchlist">—</span><span class="kpi-label">Watchlist</span></article>
+<article class="kpi-card"><span class="kpi-value" id="kpi-median-tvl">—</span><span class="kpi-label">Median TVL</span></article>
+<article class="kpi-card"><span class="kpi-value" id="kpi-top-implied">—</span><span class="kpi-label">Top implied</span></article>
+</section>
+<section id="top10" class="card" aria-label="Top 10 predicted values">
+<h2>Top 10 predicted values</h2>
+<div id="top10-bars"></div>
+<p class="muted">Bars = predicted launch value (Implied FDV) under the current scenario. One colour = one meaning.</p>
+</section>
+<section id="scenarios" class="card" aria-label="Market scenarios">
+<h2>Market scenarios</h2>
+<p class="scenario-note">Sliders test another regime — not a forecast. Multipliers apply to the whole board.</p>
+<div class="slider-row"><label><span>BTC</span></label><div class="slider-wrap"><span class="bubble"></span><input id="sc-btc" type="range" min="-30" max="30" step="1" value="0" aria-label="BTC 30-day move, percent"></div><span class="scenario-anchor">Down ×1.30 / up ×0.75</span></div>
+<div class="slider-row"><label><span>Fear &amp; Greed</span></label><div class="slider-wrap"><span class="bubble"></span><input id="sc-fg" type="range" min="0" max="100" step="1" value="46" aria-label="Fear and Greed index"></div><span class="scenario-anchor">Sentiment mirrors, not forecasts</span></div>
+<div class="slider-row"><label><span>Sector Narrative</span></label><div class="slider-wrap"><span class="bubble"></span><input id="sc-sector" type="range" min="-20" max="20" step="1" value="0" aria-label="Sector 90-day excess return, percent"></div><span class="scenario-anchor">Narratives can reverse</span></div>
+<div class="slider-row"><label><span>Market Liquidity</span></label><div class="slider-wrap"><span class="bubble"></span><input id="sc-liq" type="range" min="0" max="100" step="1" value="50" aria-label="Market liquidity"></div><span class="scenario-anchor">Stablecoins ~$287B (Nov 2026)</span></div>
+<h3>Crisis scenarios</h3>
+<p class="scenario-note">ADDITIONAL discount from the 14 Nov 2026 snapshot — the snapshot is already corrected, so this is not a full cut.</p>
+<div id="crisis-presets" class="crisis-presets">
+<button type="button" data-crisis="0" class="is-active">No crisis · 0%</button>
+<button type="button" data-crisis="1">S1 Mild · 0%</button>
+<button type="button" data-crisis="2">S2 Moderate · 0..−15%</button>
+<button type="button" data-crisis="3">S3 Severe (Terra/FTX) · −20..−40%</button>
+<button type="button" data-crisis="4">S4 Extreme (COVID) · −35..−60%</button>
+<button type="button" data-crisis="5">S5 Nov 2026 · −15..−30%</button>
+</div>
+<div class="slider-row"><label><span>Severity</span></label><div class="slider-wrap"><span class="bubble"></span><input id="crisis-severity" type="range" min="0" max="100" step="1" value="0" aria-label="Crisis severity"></div></div>
+<p id="scenario-effect" aria-live="polite"></p>
+<p id="crisis-effect" aria-live="polite"></p>
+<p id="scenario-envelope"></p>
+<p class="muted">The bearish/bullish envelope is only mathematical bounds, not a planned scenario. The bearish end double-counts: the Market Liquidity slider and the crisis scenario measure the same event (a liquidity/risk-off crisis) — they must not be multiplied in full.</p>
+<button type="button" id="scenario-reset" class="button-outline">Reset scenarios</button>
+</section>
+<div class="tabs" role="tablist" aria-label="Views">
+<button type="button" class="tab" id="tab-board" role="tab" aria-controls="panel-board" aria-selected="true">Board</button>
+<button type="button" class="tab" id="tab-live" role="tab" aria-controls="panel-live" aria-selected="false">Live tokens</button>
+</div>
+<section id="panel-board" role="tabpanel" aria-labelledby="tab-board">
+<div class="toolbar">
+<input type="search" id="f-search" placeholder="Search name or slug" aria-label="Search name or slug">
+<select id="f-category" aria-label="Category"><option value="">All categories</option></select>
+<select id="f-chain" aria-label="Chain"><option value="">All chains</option></select>
+<select id="f-tvl" aria-label="Minimum TVL"><option value="0">Any TVL</option><option value="50000000">≥ $50M</option><option value="100000000">≥ $100M</option><option value="500000000">≥ $500M</option><option value="1000000000">≥ $1B</option></select>
+<label class="check"><input type="checkbox" id="f-watchlist"> Watchlist</label>
+<button type="button" id="f-clear" class="button-outline">Clear filters</button>
+</div>
+<div id="chips" class="chips"></div>
+<p id="result-count" class="result-count"></p>
+<div class="table-wrap"><table id="board-table">
+<thead><tr>
+<th scope="col" data-sort="rank" class="num">#<span class="sort-ind"></span></th>
+<th scope="col" data-sort="name">Protocol<span class="sort-ind"></span></th>
+<th scope="col" data-sort="category">Category<span class="sort-ind"></span></th>
+<th scope="col" data-sort="chains">Chains<span class="sort-ind"></span></th>
+<th scope="col" data-sort="tvl_usd" class="num">TVL<span class="sort-ind"></span></th>
+<th scope="col" data-sort="change_7d" class="num">7d<span class="sort-ind"></span></th>
+<th scope="col" data-sort="price" class="num">Price/token<span class="sort-ind"></span></th>
+<th scope="col" data-sort="implied_value_usd" class="num is-sorted" data-sort-dir="desc">Predicted launch value<span class="sub">Implied FDV</span><span class="sort-ind">▼</span></th>
+</tr></thead>
+<tbody id="board-body"></tbody>
+</table></div>
+<p id="board-empty" class="empty" hidden>No protocols match the current filters.</p>
+<div id="pagination" class="pagination">
+<button type="button" id="page-prev" class="button-outline">Previous</button>
+<span id="page-info"></span>
+<button type="button" id="page-next" class="button-outline">Next</button>
+<label class="page-size">Rows per page
+<select id="page-size"><option value="25">25</option><option value="50">50</option></select></label>
+</div>
+</section>
+<section id="panel-live" role="tabpanel" aria-labelledby="tab-live" hidden>
+<p class="live-note">Tokenised protocols by market cap — never mixed into the ranked board.</p>
+<div class="table-wrap"><table id="live-table">
+<thead><tr>
+<th scope="col">Protocol</th>
+<th scope="col">Category</th>
+<th scope="col">Chains</th>
+<th scope="col" class="num">TVL</th>
+<th scope="col" class="num">Market cap</th>
+<th scope="col" class="num">7d</th>
+</tr></thead>
+<tbody id="live-body"></tbody>
+</table></div>
+</section>
+<section id="detail" class="card" aria-label="Protocol detail" hidden>
+<button type="button" id="detail-close" class="button-outline">Close</button>
+<h2 id="detail-title"></h2>
+<p class="est">Estimate — not a price promise</p>
+<div id="detail-meta" class="datagrid"></div>
+<div class="price-hero"><span id="detail-price">—</span> <span class="price-hero-label">/ token</span></div>
+<p id="detail-fdv"></p>
+<div id="crisis-prices" class="crisis-prices"></div>
+<h3>Factor scoring (what-if)</h3>
+<p class="whatif-note">Drag scores to test the implied value. Starting scores = model values.</p>
+<div id="detail-sliders"></div>
+<p id="detail-whatif" aria-live="polite"></p>
+<button type="button" id="detail-reset" class="button-outline">Reset scores</button>
+<h3>Token price</h3>
+<div id="detail-supply"></div>
+<div id="detail-curve"></div>
+<div id="detail-range"></div>
+<h3>Value breakdown</h3>
+<div class="table-wrap"><table id="detail-breakdown">
+<thead><tr><th scope="col">Factor</th><th scope="col" class="num">Value</th><th scope="col">Notes</th></tr></thead>
+<tbody id="detail-breakdown-body"></tbody>
+</table></div>
+<p id="detail-recalc" class="muted"></p>
+<h3>Reputation</h3>
+<div id="detail-reputation"></div>
+<h3>Comparables</h3>
+<div class="table-wrap"><table id="detail-comparables">
+<thead><tr><th scope="col">Protocol</th><th scope="col" class="num">Market cap</th><th scope="col" class="num">TVL</th><th scope="col" class="num">MCap / TVL</th></tr></thead>
+<tbody id="detail-comparables-body"></tbody>
+</table></div>
+<h3>Farm</h3>
+<ol id="detail-farm"></ol>
+</section>
+<section id="methodology" class="card" aria-labelledby="methodology-title">
+<h2 id="methodology-title">Methodology</h2>
+<p>Figures on this page are estimates from the 14 Nov 2026 snapshot, not a launch-price promise. Launch price cannot be known from TVL or FDV alone — initial liquidity, token distribution, demand, market makers, and the launch mechanism also determine the actual price.</p>
+<h3>Formulas</h3>
+<ol class="formula-list">
+<li><strong>F1</strong> Initial token price = FDV ÷ total supply (planned).</li>
+<li><strong>F2</strong> Launch market cap = price × circulating supply.</li>
+<li><strong>F3</strong> FDV = price × total supply (planned). If the token design allows minting beyond the plan, FDV must use maximum supply.</li>
+<li><strong>F4</strong> Circulating supply = total supply − locked tokens (vesting, team, treasury, staking).</li>
+<li><strong>F5</strong> Implied FDV = TVL × category multiple × size × growth × maturity × M_reputation.</li>
+<li><strong>F6</strong> AMM spot price = quote reserve ÷ token reserve — reference only, not computed from the snapshot (no reserve data).</li>
+</ol>
+<p><strong>Example:</strong> FDV $100M, total supply 1B, circulating 150M (15%) → initial price $0.10, launch market cap $15M, FDV $100M.</p>
+<p><strong>Launch price drivers:</strong> initial liquidity (partial, Market Liquidity slider proxy), token distribution (supply + circulating slider assumptions), demand (not measurable — scenarios only), market makers (no data), launch mechanism (unknown — AMM, bonding curve, LBP, IDO, or airdrop).</p>
+<h3>Peer table by category</h3>
+<p class="muted">Multiple = median mcap/TVL of tokenised protocols in the category (peers with mcap ≤ 0 discarded, ratios winsorized 0.01–10, min 2 peers, clamp 0.05–1.5; with fewer than 2 peers the computed global median 0.214 is used). Range = 25–75 quartiles of peer ratios (with fewer than 2 peers, the global middle half).</p>
+<div id="peer-tables"></div>
+<h3>What is not measured</h3>
+<p>Revenue, funding, active users, volume, unlock/vesting schedules, AMM reserves, and market makers are not in the snapshot — the methodology names them instead of inventing their numbers. These formulas have never been tested against a real launch (no backtesting yet): all constants are judgement, not fitted results. The Risk Curators multiple uses the global median — its only peer (Api3, an oracle) is not economically comparable. Gauntlet: the kill-switch is on over the Resolv USR exploit of 22 Mar 2026; partial compensation still counts as not fully compensated.</p>
+<p><strong>Board:</strong> 40 watchlist + 186 early (below the $50M floor). <strong>Live:</strong> 24 tokenised protocols, market cap only. “Listed without a token” = no DefiLlama record (not proof). Not investment advice.</p>
+</section>
+</main>
+<footer>Token Radar · radar-2.2 · DefiLlama snapshot 14 Nov 2026 · Frozen data, no network.</footer>
+<script src="../data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
